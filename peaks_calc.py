@@ -1,4 +1,5 @@
 
+from logging import exception
 from .ion_calc import *
 from .AAMass import aamass
 from .xlink import xlmass
@@ -62,14 +63,22 @@ def format_linker_mass_xl(seq_length, linker, linksite, pepmass=0):
         xlmassinfo[linksite] = pepmass + xlmass.get_linker_mass(linker)
     return xlmassinfo
 
-def format_linker_mass_mono(xl_seq_str, linker):
-    '''Get xlinker mono mass info and format it into a list'''
+def format_linker_mass(xl_seq_str, linker, mode):
+    '''Get xlinker mass info and format it into a list'''
 
     line = re.split("\(|\)|\-", xl_seq_str)
     sequence, linksite = line[0], int(line[1])
     xlmassinfo = [0]*(len(sequence)+2)
-    xlmassinfo[linksite] = xlmass.get_mono_mass(linker)
+
+    if mode == "mono":
+        xlmassinfo[linksite] = xlmass.get_mono_mass(linker)
+    elif mode == "loop":
+        xlmassinfo[linksite] = xlmass.get_linker_mass(linker)
+    else:
+        raise exception
+
     return xlmassinfo
+
 
 def cal_theoretical_b_y_peaks(sequence, modinfo, xlmassinfo=None):
     '''
@@ -117,6 +126,34 @@ def cal_theoretical_b_y_peaks_xl(sequence, modinfo, linker):
         cal_theoretical_b_y_peaks(sequence2, modinfo2, xlmassinfo2)
 
 
+
+def cal_theoretical_b_y_peaks_loop(sequence, modinfo, xlmassinfo=None):
+    '''
+    Return mz for b/y ions from sequence and modinfo info
+    sequence: ABCDE(1)(2)
+    modinfo: a string like "26,Carbamidomethyl[C];" or a list like [(26, Carbamidomethyl[C])]
+    '''
+
+    line = re.split("\(|\)|\-", sequence)
+
+    theoretical_peaks = {}
+    bions, pepmass = calc_b_ions(line[0], modinfo, xlmassinfo)
+    theoretical_peaks['b'] = bions
+
+    theoretical_peaks['y'] = calc_y_from_b(bions, pepmass)
+    #theoretical_peaks['b-ModLoss'] = calc_ion_modloss(bions, sequence, modinfo, N_term = True)
+    #theoretical_peaks['y-ModLoss'] = calc_ion_modloss(theoretical_peaks['y'], sequence, modinfo, N_term = False)
+    
+    for i in range(int(line[1]), int(line[3])):
+        theoretical_peaks['b'][i-1] = ""
+        theoretical_peaks['y'][i-1] = ""
+
+    theoretical_peaks['y'].reverse()
+    #theoretical_peaks['y-ModLoss'].reverse()
+    
+    return theoretical_peaks['b'], theoretical_peaks['y']#, theoretical_peaks['b-ModLoss'], theoretical_peaks['y-ModLoss']
+
+
 def get_theoretical_peaks_pL_xl(seq_mod_info, ions_prefix_lists):
     '''
     Calc mz for ab/ay/bb/by ions from sequence and modinfo extracted from pLink
@@ -140,18 +177,35 @@ def get_theoretical_peaks_pL_regular(seq_mod_info, ions_prefix_lists):
         )), dtype=object)
     return seq_mod_info
 
-def get_theoretical_peaks_pL_mono(seq_mod_info, ions_prefix_lists, linker):
+def get_theoretical_peaks_pL_mono(seq_mod_info, ions_prefix_lists):
     '''
     Calc mz for ab/ay/bb/by ions from sequence and modinfo extracted from pLink
     '''
 
     seq_mod_info["linker_dict"] = np.array(list(map(
-        lambda x, y: format_linker_mass_mono(x, y),
+        lambda x, y: format_linker_mass(x, y, "mono"),
             seq_mod_info['sequence'], seq_mod_info['linker']
         )), dtype=object)
 
     seq_mod_info[ions_prefix_lists] = np.array(list(map(
         lambda x, y, z: cal_theoretical_b_y_peaks(x.split('(')[0], format_pL_modinfo(y), z), 
+            seq_mod_info['sequence'], seq_mod_info['modinfo'], seq_mod_info["linker_dict"]
+        )), dtype=object)
+    return seq_mod_info
+
+
+def get_theoretical_peaks_pL_loop(seq_mod_info, ions_prefix_lists):
+    '''
+    Calc mz for ab/ay/bb/by ions from sequence and modinfo extracted from pLink
+    '''
+
+    seq_mod_info["linker_dict"] = np.array(list(map(
+        lambda x, y: format_linker_mass(x, y, "loop"),
+            seq_mod_info['sequence'], seq_mod_info['linker']
+        )), dtype=object)
+
+    seq_mod_info[ions_prefix_lists] = np.array(list(map(
+        lambda x, y, z: cal_theoretical_b_y_peaks_loop(x, format_pL_modinfo(y), z), 
             seq_mod_info['sequence'], seq_mod_info['modinfo'], seq_mod_info["linker_dict"]
         )), dtype=object)
     return seq_mod_info
@@ -180,6 +234,8 @@ def get_theo_peaks_array(seq_mod_line, title, ions_prefix_list, cleavable_arm_ma
     for ions_prefix in ions_prefix_list:
         for charge in range(1, max_charge+1):
             for length, mz in enumerate(seq_mod_line[ions_prefix]):
+                if mz == "":
+                    continue
                 theo_peaks_array.append(((mz) / charge + aamass.mass_proton, 
                     f"{ions_prefix}{length+1}+{charge}"))
                 '''
@@ -234,6 +290,8 @@ def get_theo_peaks_array_zero(seq_mod_line, title, ions_prefix_list, cleavable_a
     theo_peaks_array = []
     for ions_prefix in ions_prefix_list:
         for length, mz in enumerate(seq_mod_line[ions_prefix]):
+            if mz == "":
+                continue
             theo_peaks_array.append((mz, 
                 f"{ions_prefix}{length+1}"))
             '''

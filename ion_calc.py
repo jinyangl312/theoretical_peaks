@@ -1,4 +1,5 @@
 from .AAMass import aamass
+from .AAMass import aamass_aa_ini
 from .modloss_priority import modloss_priority as prior
 
 def calc_mod_mass_list(peptide, modlist):
@@ -58,6 +59,14 @@ def calc_pepmass(peptide, modinfo=""):
     for i in range(len(peptide)-1):
         mass_nterm += aamass.aa_mass_dict[peptide[i]]
     pepmass = mass_nterm + aamass.aa_mass_dict[peptide[-1]] + aamass.mass_H2O
+    return pepmass
+
+def calc_pepmass_aa_ini(peptide, modinfo=""):
+    modmass = calc_total_modmass(modinfo)
+    mass_nterm = modmass
+    for i in range(len(peptide)-1):
+        mass_nterm += aamass_aa_ini.aa_mass_dict[peptide[i]]
+    pepmass = mass_nterm + aamass_aa_ini.aa_mass_dict[peptide[-1]] + aamass_aa_ini.mass_H2O
     return pepmass
     
 def calc_y_from_b(bions, pepmass):

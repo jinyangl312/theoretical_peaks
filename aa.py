@@ -30,4 +30,3 @@ def get_aa(mode="mono"):
                         aa_mass += element_mass * element_abundance * int(items[j*2+1])
                 aa_dict[line[0]] = aa_mass
         return aa_dict
-get_aa("avg")

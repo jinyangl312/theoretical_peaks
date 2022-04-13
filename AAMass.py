@@ -69,7 +69,6 @@ class AAMass(object):
         self.mod_mass_dict = {}
         # self.mod_mass_dict["Carbamidomethyl[C]"] = 57.021464
         # self.mod_mass_dict['Oxidation[M]'] = 15.994915
-        self.get_from_pFind_ini()
         self.__read_mod__()
     
     def __read_mod__(self):
@@ -82,11 +81,6 @@ class AAMass(object):
             if modinfo[4] != '0':
                 mod_neutral_loss = float(modinfo[5])
             self.mod_mass_dict[modname] = (modmass, mod_neutral_loss)
-
-    def get_from_pFind_ini(self): # mono mass
-        from .aa import get_aa
-        for aa_pFind, aamass_pFind in get_aa("mono").items():
-            self.aa_mass_dict[aa_pFind] = aamass_pFind
             
     def fix_C57(self):
         self.aa_mass_dict['C'] += 57.021464
@@ -95,4 +89,25 @@ class AAMass(object):
         self.aa_mass_dict['K'] += self.mod_mass_dict['Label_13C(6)15N(2)[K]'][0]
         self.aa_mass_dict['R'] += self.mod_mass_dict['Label_13C(6)15N(4)[R]'][0]
         
+
+
+class AAMass_aa_ini(AAMass):
+    '''
+    classdocs
+    '''
+
+    def __init__(self):
+        '''
+        Constructor
+        '''
+        super().__init__()
+        self.get_from_aa_ini()
+
+    def get_from_aa_ini(self): # mono mass
+        from .aa import get_aa
+        for aa_pFind, aamass_pFind in get_aa("mono").items():
+            self.aa_mass_dict[aa_pFind] = aamass_pFind
+
+
 aamass = AAMass()
+aamass_aa_ini = AAMass_aa_ini()

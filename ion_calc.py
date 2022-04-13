@@ -52,7 +52,7 @@ def calc_b_ions(peptide, modinfo, xlmassinfo=None):
             aamass.mass_H2O
     return b_ions, pepmass
     
-def calc_pepmass(peptide, modinfo):
+def calc_pepmass(peptide, modinfo=""):
     modmass = calc_total_modmass(modinfo)
     mass_nterm = modmass
     for i in range(len(peptide)-1):

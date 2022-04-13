@@ -32,7 +32,7 @@ class AAMass(object):
         
         self.aa_mass_dict = {}
         self.aa_mass_dict['A'] = 71.037114
-        self.aa_mass_dict['B'] = 0.
+        #self.aa_mass_dict['B'] = 0. # B  aspartate/asparagine? from IUPAC
         self.aa_mass_dict['C'] = 103.009185
         self.aa_mass_dict['D'] = 115.026943
         self.aa_mass_dict['E'] = 129.042593
@@ -40,22 +40,23 @@ class AAMass(object):
         self.aa_mass_dict['G'] = 57.021464
         self.aa_mass_dict['H'] = 137.058912
         self.aa_mass_dict['I'] = 113.084064
-        self.aa_mass_dict['J'] = 114.042927
+        #self.aa_mass_dict['J'] = 114.042927 # ? or None?
         self.aa_mass_dict['K'] = 128.094963
         self.aa_mass_dict['L'] = 113.084064
         self.aa_mass_dict['M'] = 131.040485
         self.aa_mass_dict['N'] = 114.042927
+        #self.aa_mass_dict['O'] = 0. #
         self.aa_mass_dict['P'] = 97.052764
         self.aa_mass_dict['Q'] = 128.058578
         self.aa_mass_dict['R'] = 156.101111
         self.aa_mass_dict['S'] = 87.032028
         self.aa_mass_dict['T'] = 101.047679
-        self.aa_mass_dict['U'] = 150.95363
+        #self.aa_mass_dict['U'] = 150.95363 # ?
         self.aa_mass_dict['V'] = 99.068414
-        self.aa_mass_dict['X'] = 0.
         self.aa_mass_dict['W'] = 186.079313
+        self.aa_mass_dict['X'] = 0. # any?
         self.aa_mass_dict['Y'] = 163.06332
-        self.aa_mass_dict['Z'] = 0.
+        #self.aa_mass_dict['Z'] = 0. # glutamate/glutamine?
         
         self.glyco_mass_dict = {}
         self.glyco_mass_dict["Xyl"] = 132.0422587452
@@ -68,6 +69,7 @@ class AAMass(object):
         self.mod_mass_dict = {}
         # self.mod_mass_dict["Carbamidomethyl[C]"] = 57.021464
         # self.mod_mass_dict['Oxidation[M]'] = 15.994915
+        self.get_from_pFind_ini()
         self.__read_mod__()
     
     def __read_mod__(self):
@@ -80,6 +82,11 @@ class AAMass(object):
             if modinfo[4] != '0':
                 mod_neutral_loss = float(modinfo[5])
             self.mod_mass_dict[modname] = (modmass, mod_neutral_loss)
+
+    def get_from_pFind_ini(self): # mono mass
+        from .aa import get_aa
+        for aa_pFind, aamass_pFind in get_aa("mono").items():
+            self.aa_mass_dict[aa_pFind] = aamass_pFind
             
     def fix_C57(self):
         self.aa_mass_dict['C'] += 57.021464

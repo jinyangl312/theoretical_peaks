@@ -222,6 +222,33 @@ def get_theoretical_peaks_pF(seq_mod_info, ions_prefix_lists):
         )), dtype=object)
     return seq_mod_info
 
+
+def get_theo_peaks_array_from_precursor(sequence, modification, charge):
+    '''
+    Calculate theoretical peaks from precursor.
+    '''
+    
+    ## Generate 1-D array from seq_mod_info and sort them
+    theo_peaks_array = []
+    for ions_prefix, ions_mass_list in zip(
+        ["b", "y"], cal_theoretical_b_y_peaks(sequence, modification)):
+        for charge in range(1, charge+1):
+            for length, mz in enumerate(ions_mass_list):
+                if mz == "":
+                    continue
+                theo_peaks_array.append(((mz) / charge + aamass.mass_proton, 
+                    f"{ions_prefix}{length+1}+{charge}"))
+                '''
+                theo_peaks_array.append(((mz - aamass.mass_NH3) / charge + aamass.mass_proton, 
+                    f"{ions_prefix}{length+1}-NH3+{charge}"))
+                theo_peaks_array.append(((mz - aamass.mass_H2O) / charge + aamass.mass_proton,
+                    f"{ions_prefix}{length+1}-H2O+{charge}"))
+                '''
+
+    theo_peaks_array.sort(key=lambda x: x[0])
+    return theo_peaks_array
+
+
 def get_theo_peaks_array(seq_mod_line, title, ions_prefix_list, cleavable_arm_mass=None):
     '''
     Calculate theoretical peaks from theoretical ions.

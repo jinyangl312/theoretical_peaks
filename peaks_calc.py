@@ -54,13 +54,10 @@ def format_pF_modinfo(modinfo):
             modlist.append( (site, modname) )
     return modlist
 
-def format_linker_mass_xl(seq_length, linker, linksite, pepmass=0):
+def format_linker_mass_xl(seq_length, linker_mass, linksite):
     '''Calc xlinker mass info and format it with pepmass into a list'''
     xlmassinfo = [0]*(seq_length+2)
-    if xlmass.is_cleavable(linker):
-        xlmassinfo[linksite] = xlmass.get_short_arm_mass(linker) # Short
-    else:
-        xlmassinfo[linksite] = pepmass + xlmass.get_linker_mass(linker)
+    xlmassinfo[linksite] = linker_mass
     return xlmassinfo
 
 def format_linker_mass(xl_seq_str, linker, mode):
@@ -115,21 +112,59 @@ def cal_theoretical_b_y_peaks_xl(sequence, modinfo, linker):
 
     # Calc xl mass info and deliver to two peptides as a large modification
     if xlmass.is_cleavable(linker):
-        xlmassinfo1 = format_linker_mass_xl(len(sequence1), linker, linksite1)
-        xlmassinfo2 = format_linker_mass_xl(len(sequence2), linker, linksite2)
+        xlmassinfo1_S = format_linker_mass_xl(len(sequence1), xlmass.get_short_arm_mass(linker), linksite1)
+        xlmassinfo2_S = format_linker_mass_xl(len(sequence2), xlmass.get_short_arm_mass(linker), linksite2)
+        xlmassinfo1_L = format_linker_mass_xl(len(sequence1), xlmass.get_long_arm_mass(linker), linksite1)
+        xlmassinfo2_L = format_linker_mass_xl(len(sequence2), xlmass.get_long_arm_mass(linker), linksite2)
+        xlmassinfo1 = format_linker_mass_xl(len(sequence1), xlmass.get_linker_mass(linker) + calc_pepmass(sequence2, modinfo2), linksite1)
+        xlmassinfo2 = format_linker_mass_xl(len(sequence2), xlmass.get_linker_mass(linker) + calc_pepmass(sequence1, modinfo1), linksite2)
+        
+        # Now the xl can be regarded as two single peptides with modifications. Calculate theoretical peaks.
+        return \
+            cal_theoretical_b_y_peaks_cleavable_arms(sequence1, modinfo1, xlmassinfo1_S, linksite1) + \
+            cal_theoretical_b_y_peaks_cleavable_arms(sequence2, modinfo2, xlmassinfo2_S, linksite2) + \
+            cal_theoretical_b_y_peaks_cleavable_arms(sequence1, modinfo1, xlmassinfo1_L, linksite1) + \
+            cal_theoretical_b_y_peaks_cleavable_arms(sequence2, modinfo2, xlmassinfo2_L, linksite2) + \
+            cal_theoretical_b_y_peaks(sequence1, modinfo1, xlmassinfo1) + \
+            cal_theoretical_b_y_peaks(sequence2, modinfo2, xlmassinfo2)
     else:
-        xlmassinfo1 = format_linker_mass_xl(len(sequence1), linker, linksite1, calc_pepmass(sequence2, modinfo2))
-        xlmassinfo2 = format_linker_mass_xl(len(sequence2), linker, linksite2, calc_pepmass(sequence1, modinfo1))
+        xlmassinfo1 = format_linker_mass_xl(len(sequence1), xlmass.get_linker_mass(linker) + calc_pepmass(sequence2, modinfo2), linksite1)
+        xlmassinfo2 = format_linker_mass_xl(len(sequence2), xlmass.get_linker_mass(linker) + calc_pepmass(sequence1, modinfo1), linksite2)
 
-    # Now the xl can be regarded as two single peptides with modifications. Calculate theoretical peaks.
-    return cal_theoretical_b_y_peaks(sequence1, modinfo1, xlmassinfo1) + \
-        cal_theoretical_b_y_peaks(sequence2, modinfo2, xlmassinfo2)
+        return cal_theoretical_b_y_peaks(sequence1, modinfo1, xlmassinfo1) + \
+            cal_theoretical_b_y_peaks(sequence2, modinfo2, xlmassinfo2)
 
+
+def cal_theoretical_b_y_peaks_cleavable_arms(sequence, modinfo, xlmassinfo, linksite):
+    '''
+    Return mz for b/y ions from sequence and modinfo info.
+    Changed mz of b ions left to the linked site and y ions right to the linked site to empty string.
+    sequence: ABCDE(2)
+    modinfo: a string like "26,Carbamidomethyl[C];" or a list like [(26, Carbamidomethyl[C])]
+    '''
+
+    theoretical_peaks = {}
+    bions, pepmass = calc_b_ions(sequence, modinfo, xlmassinfo)
+    theoretical_peaks['b'] = bions
+
+    theoretical_peaks['y'] = calc_y_from_b(bions, pepmass)
+    #theoretical_peaks['b-ModLoss'] = calc_ion_modloss(bions, sequence, modinfo, N_term = True)
+    #theoretical_peaks['y-ModLoss'] = calc_ion_modloss(theoretical_peaks['y'], sequence, modinfo, N_term = False)
+    theoretical_peaks['y'].reverse()
+    #theoretical_peaks['y-ModLoss'].reverse()    
+    
+    for i in range(1, linksite):
+        theoretical_peaks['b'][i-1] = ""
+    for i in range(1, len(sequence) + 1 - linksite):
+        theoretical_peaks['y'][i-1] = ""
+
+    return theoretical_peaks['b'], theoretical_peaks['y']#, theoretical_peaks['b-ModLoss'], theoretical_peaks['y-ModLoss']
 
 
 def cal_theoretical_b_y_peaks_loop(sequence, modinfo, xlmassinfo=None):
     '''
-    Return mz for b/y ions from sequence and modinfo info
+    Return mz for b/y ions from sequence and modinfo info.
+    Changed mz between loop-linked sites to empty string.
     sequence: ABCDE(1)(2)
     modinfo: a string like "26,Carbamidomethyl[C];" or a list like [(26, Carbamidomethyl[C])]
     '''
@@ -149,35 +184,41 @@ def cal_theoretical_b_y_peaks_loop(sequence, modinfo, xlmassinfo=None):
         theoretical_peaks['y'][i-1] = ""
 
     theoretical_peaks['y'].reverse()
-    #theoretical_peaks['y-ModLoss'].reverse()
-    
+    #theoretical_peaks['y-ModLoss'].reverse()    
     return theoretical_peaks['b'], theoretical_peaks['y']#, theoretical_peaks['b-ModLoss'], theoretical_peaks['y-ModLoss']
 
 
-def get_theoretical_peaks_pL_xl(seq_mod_info, ions_prefix_lists):
+def get_theoretical_peaks_pL_xl(seq_mod_info, is_cleavable):
     '''
     Calc mz for ab/ay/bb/by ions from sequence and modinfo extracted from pLink
     '''
 
-    seq_mod_info[ions_prefix_lists] = np.array(list(map(
-        lambda x, y, z: cal_theoretical_b_y_peaks_xl(x, y, z), 
-            seq_mod_info['sequence'], seq_mod_info['modinfo'], seq_mod_info['linker']
-        )), dtype=object)
+    if is_cleavable:
+        seq_mod_info[['abS', 'ayS', 'bbS', 'byS', 'abL', 'ayL', 'bbL', 'byL', 'ab', 'ay', 'bb', 'by']] = np.array(list(map(
+            lambda x, y, z: cal_theoretical_b_y_peaks_xl(x, y, z), 
+                seq_mod_info['sequence'], seq_mod_info['modinfo'], seq_mod_info['linker']
+            )), dtype=object)
+    else:
+        seq_mod_info[['ab', 'ay', 'bb', 'by']] = np.array(list(map(
+            lambda x, y, z: cal_theoretical_b_y_peaks_xl(x, y, z), 
+                seq_mod_info['sequence'], seq_mod_info['modinfo'], seq_mod_info['linker']
+            )), dtype=object)
+
     return seq_mod_info
 
 
-def get_theoretical_peaks_pL_regular(seq_mod_info, ions_prefix_lists):
+def get_theoretical_peaks_pL_regular(seq_mod_info):
     '''
     Calc mz for ab/ay/bb/by ions from sequence and modinfo extracted from pLink
     '''
 
-    seq_mod_info[ions_prefix_lists] = np.array(list(map(
+    seq_mod_info[["b", "y"]] = np.array(list(map(
         lambda x, y: cal_theoretical_b_y_peaks(x, format_pL_modinfo(y)), 
             seq_mod_info['sequence'], seq_mod_info['modinfo']
         )), dtype=object)
     return seq_mod_info
 
-def get_theoretical_peaks_pL_mono(seq_mod_info, ions_prefix_lists):
+def get_theoretical_peaks_pL_mono(seq_mod_info):
     '''
     Calc mz for ab/ay/bb/by ions from sequence and modinfo extracted from pLink
     '''
@@ -187,14 +228,14 @@ def get_theoretical_peaks_pL_mono(seq_mod_info, ions_prefix_lists):
             seq_mod_info['sequence'], seq_mod_info['linker']
         )), dtype=object)
 
-    seq_mod_info[ions_prefix_lists] = np.array(list(map(
+    seq_mod_info[["b", "y"]] = np.array(list(map(
         lambda x, y, z: cal_theoretical_b_y_peaks(x.split('(')[0], format_pL_modinfo(y), z), 
             seq_mod_info['sequence'], seq_mod_info['modinfo'], seq_mod_info["linker_dict"]
         )), dtype=object)
     return seq_mod_info
 
 
-def get_theoretical_peaks_pL_loop(seq_mod_info, ions_prefix_lists):
+def get_theoretical_peaks_pL_loop(seq_mod_info):
     '''
     Calc mz for ab/ay/bb/by ions from sequence and modinfo extracted from pLink
     '''
@@ -204,19 +245,19 @@ def get_theoretical_peaks_pL_loop(seq_mod_info, ions_prefix_lists):
             seq_mod_info['sequence'], seq_mod_info['linker']
         )), dtype=object)
 
-    seq_mod_info[ions_prefix_lists] = np.array(list(map(
+    seq_mod_info[["b", "y"]] = np.array(list(map(
         lambda x, y, z: cal_theoretical_b_y_peaks_loop(x, format_pL_modinfo(y), z), 
             seq_mod_info['sequence'], seq_mod_info['modinfo'], seq_mod_info["linker_dict"]
         )), dtype=object)
     return seq_mod_info
 
 
-def get_theoretical_peaks_pF(seq_mod_info, ions_prefix_lists):
+def get_theoretical_peaks_pF(seq_mod_info):
     '''
     Calc mz for b/y ions from sequence and modinfo extracted from pFind
     '''
 
-    seq_mod_info[ions_prefix_lists] = np.array(list(map(
+    seq_mod_info[["b", "y"]] = np.array(list(map(
         lambda x, y: cal_theoretical_b_y_peaks(x, format_pF_modinfo(y)),
             seq_mod_info['sequence'], seq_mod_info['modinfo']
         )), dtype=object)
@@ -226,6 +267,7 @@ def get_theoretical_peaks_pF(seq_mod_info, ions_prefix_lists):
 def get_theo_peaks_array_from_precursor(sequence, modification, charge):
     '''
     Calculate theoretical peaks from precursor.
+    Used in search engine.
     '''
     
     ## Generate 1-D array from seq_mod_info and sort them
@@ -271,7 +313,7 @@ def get_theo_peaks_array(seq_mod_line, title, ions_prefix_list, cleavable_arm_ma
                 theo_peaks_array.append(((mz - aamass.mass_H2O) / charge + aamass.mass_proton,
                     f"{ions_prefix}{length+1}-H2O+{charge}"))
                 '''
-
+    '''
     # Calc the peak of long arm for cleavable linkers
     if cleavable_arm_mass is not None:
         theo_peaks_array_long_arm = []
@@ -302,7 +344,7 @@ def get_theo_peaks_array(seq_mod_line, title, ions_prefix_list, cleavable_arm_ma
             charge = int(re.findall("\d+", info)[-1]) # 打表
             theo_peaks_array_long_arm.append((strength + cleavable_arm_mass / charge, info+"L"))
         theo_peaks_array = theo_peaks_array + theo_peaks_array_long_arm
-
+    '''
     theo_peaks_array.sort(key=lambda x: x[0])
     return theo_peaks_array
 

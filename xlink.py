@@ -36,6 +36,11 @@ class LinkerMass(object):
         if self.is_cleavable(linker):
             return float(self.linker_dict[linker][10])
         return None
+
+    def get_long_arm_mass(self, linker):
+        if self.is_cleavable(linker):
+            return float(self.linker_dict[linker][9])
+        return None
     
     def get_long_short_arm_mass_deviation(self, linker):
         if self.is_cleavable(linker):

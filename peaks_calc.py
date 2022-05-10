@@ -3,7 +3,6 @@ from logging import exception
 from .ion_calc import *
 from .AAMass import aamass
 from .xlink import xlmass
-import pandas as pd
 import numpy as np
 import re
 
@@ -291,11 +290,12 @@ def get_theo_peaks_array_from_precursor(sequence, modification, charge):
     return theo_peaks_array
 
 
-def get_theo_peaks_array(seq_mod_line, title, ions_prefix_list, cleavable_arm_mass=None):
+def get_theo_peaks_array(seq_mod_line, title, ions_prefix_list):
     '''
     Calculate theoretical peaks from theoretical ions.
     For example, given mass for b, calculate mz for b with different length and charge state.
     '''
+
     max_charge = int(re.findall(".*?\.", title)[3].split('.')[0])
 
     ## Generate 1-D array from seq_mod_info and sort them
@@ -313,47 +313,16 @@ def get_theo_peaks_array(seq_mod_line, title, ions_prefix_list, cleavable_arm_ma
                 theo_peaks_array.append(((mz - aamass.mass_H2O) / charge + aamass.mass_proton,
                     f"{ions_prefix}{length+1}-H2O+{charge}"))
                 '''
-    '''
-    # Calc the peak of long arm for cleavable linkers
-    if cleavable_arm_mass is not None:
-        theo_peaks_array_long_arm = []
-        # Get linksite
-        line = re.split("\(|\)|\-", seq_mod_line["sequence"])
-        len_sequence1, len_sequence2, linksite1, linksite2 = len(line[0]), len(line[3]), int(line[1]), int(line[4]) # starts from 1
-        
-        for strength, info in theo_peaks_array:
-            # Get seqence num
-            sequence_num = int(re.search("\d+", info).group())
 
-            # If site of b less than linksite
-            if info[1] == 'b':
-                if info[0] == 'a':
-                    if sequence_num < linksite1:
-                        continue
-                elif sequence_num < linksite2:
-                    continue
-            # If site of y less than linksite
-            else:
-                if info[0] == 'a':
-                    if sequence_num < len_sequence1 + 1 - linksite1:
-                        continue
-                elif sequence_num < len_sequence2 + 1 - linksite2:
-                    continue
-
-            # Else: may exist short long arms
-            charge = int(re.findall("\d+", info)[-1]) # 打表
-            theo_peaks_array_long_arm.append((strength + cleavable_arm_mass / charge, info+"L"))
-        theo_peaks_array = theo_peaks_array + theo_peaks_array_long_arm
-    '''
     theo_peaks_array.sort(key=lambda x: x[0])
     return theo_peaks_array
 
-def get_theo_peaks_array_zero(seq_mod_line, title, ions_prefix_list, cleavable_arm_mass=None):
+
+def get_theo_peaks_array_zero(seq_mod_line, title, ions_prefix_list):
     '''
     Calculate theoretical peaks from theoretical ions.
     For example, given mass for b, calculate mz for b with different length and charge state.
     '''
-    max_charge = int(re.findall(".*?\.", title)[3].split('.')[0])
 
     ## Generate 1-D array from seq_mod_info and sort them
     theo_peaks_array = []
@@ -369,37 +338,6 @@ def get_theo_peaks_array_zero(seq_mod_line, title, ions_prefix_list, cleavable_a
             theo_peaks_array.append(((mz - aamass.mass_H2O) / charge + aamass.mass_proton,
                 f"{ions_prefix}{length+1}-H2O+{charge}"))
             '''
-    '''
-    # Calc the peak of long arm for cleavable linkers
-    if cleavable_arm_mass is not None:
-        theo_peaks_array_long_arm = []
-        # Get linksite
-        line = re.split("\(|\)|\-", seq_mod_line["sequence"])
-        len_sequence1, len_sequence2, linksite1, linksite2 = len(line[0]), len(line[3]), int(line[1]), int(line[4]) # starts from 1
-        
-        for strength, info in theo_peaks_array:
-            # Get seqence num
-            sequence_num = int(re.search("\d+", info).group())
-
-            # If site of b less than linksite
-            if info[1] == 'b':
-                if info[0] == 'a':
-                    if sequence_num < linksite1:
-                        continue
-                elif sequence_num < linksite2:
-                    continue
-            # If site of y less than linksite
-            else:
-                if info[0] == 'a':
-                    if sequence_num < len_sequence1 + 1 - linksite1:
-                        continue
-                elif sequence_num < len_sequence2 + 1 - linksite2:
-                    continue
-
-            # Else: may exist short long arms
-            charge = int(re.findall("\d+", info)[-1]) # 打表
-            theo_peaks_array_long_arm.append((strength + cleavable_arm_mass / charge, info+"L"))
-        theo_peaks_array = theo_peaks_array + theo_peaks_array_long_arm'''
 
     theo_peaks_array.sort(key=lambda x: x[0])
     return theo_peaks_array

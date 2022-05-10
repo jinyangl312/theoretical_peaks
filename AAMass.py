@@ -7,9 +7,9 @@ Created on 2013-8-16
 
 class AAMass(object):
     '''
-    classdocs
+    Get mass of amino acids.
+    Forked from pDeep.
     '''
-
 
     def __init__(self):
         '''
@@ -93,17 +93,16 @@ class AAMass(object):
 
 class AAMass_aa_ini(AAMass):
     '''
-    classdocs
+    Get mass of amino acids from aa.ini.
+    Use mono mass.
+    Used in search engine.
     '''
 
     def __init__(self):
-        '''
-        Constructor
-        '''
         super().__init__()
         self.get_from_aa_ini()
 
-    def get_from_aa_ini(self): # mono mass
+    def get_from_aa_ini(self):
         from .aa import get_aa
         for aa_pFind, aamass_pFind in get_aa("mono").items():
             self.aa_mass_dict[aa_pFind] = aamass_pFind

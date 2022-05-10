@@ -5,19 +5,29 @@
 import re
 import os
 
-def get_linker_dict():
+def get_linker_dict():    
+    """
+    Interface for the usage of xlink.ini
+    """
+
     linker_dict = {} # {mod_name: elements}
     with open(os.path.dirname(__file__)+'/xlink.ini') as f:
+        # Header
         line = f.readline() # [xlink]
         line = f.readline()
         number = int(re.search('\d+', line).group())
-        for i in range(number):
+
+        for _ in range(number):
             line = f.readline()
             line = re.split("=|\n", f.readline())
             linker_dict[line[0]] = line[1].split(' ')
     return linker_dict
 
 class LinkerMass(object):
+    """
+    Access linker mass info
+    """
+
     def __init__(self):
         self.linker_dict = get_linker_dict()
     

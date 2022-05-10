@@ -1,7 +1,15 @@
+# _*_ coding: utf-8 _*_
+# @Time    :   2022/05/10 17:49:34
+# @FileName:   element.py
+# @Author  :   jyl
 import re
 import os
 
 def get_element():
+    """
+    Interface for the usage of element.ini
+    """
+
     element_dict = {} # {element_name: elements}
     with open(os.path.dirname(__file__)+'/element.ini') as f:
         line = f.readline()

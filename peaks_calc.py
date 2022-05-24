@@ -263,7 +263,7 @@ def get_theoretical_peaks_pF(seq_mod_info):
     return seq_mod_info
 
 
-def get_theo_peaks_array_from_precursor(sequence, modification, charge):
+def get_theo_peaks_array_from_precursor(sequence, modification, charge, consider_mod_loss=False):
     '''
     Calculate theoretical peaks from precursor.
     Used in search engine.
@@ -279,12 +279,11 @@ def get_theo_peaks_array_from_precursor(sequence, modification, charge):
                     continue
                 theo_peaks_array.append(((mz) / charge + aamass.mass_proton, 
                     f"{ions_prefix}{length+1}+{charge}"))
-                '''
-                theo_peaks_array.append(((mz - aamass.mass_NH3) / charge + aamass.mass_proton, 
-                    f"{ions_prefix}{length+1}-NH3+{charge}"))
-                theo_peaks_array.append(((mz - aamass.mass_H2O) / charge + aamass.mass_proton,
-                    f"{ions_prefix}{length+1}-H2O+{charge}"))
-                '''
+                if consider_mod_loss:
+                    theo_peaks_array.append(((mz - aamass.mass_NH3) / charge + aamass.mass_proton, 
+                        f"{ions_prefix}{length+1}-NH3+{charge}"))
+                    theo_peaks_array.append(((mz - aamass.mass_H2O) / charge + aamass.mass_proton,
+                        f"{ions_prefix}{length+1}-H2O+{charge}"))
 
     theo_peaks_array.sort(key=lambda x: x[0])
     return theo_peaks_array

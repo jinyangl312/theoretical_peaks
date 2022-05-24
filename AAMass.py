@@ -4,6 +4,7 @@ Created on 2013-8-16
 
 @author: RunData
 '''
+from .modification import get_modification, keep_one_neutral_loss
 
 class AAMass(object):
     '''
@@ -66,30 +67,11 @@ class AAMass(object):
         self.glyco_mass_dict["NeuAc"] = 291.09541652769997
         self.glyco_mass_dict["NeuGc"] = 307.09033114979997
 
-        self.mod_mass_dict = {}
-        # self.mod_mass_dict["Carbamidomethyl[C]"] = 57.021464
-        # self.mod_mass_dict['Oxidation[M]'] = 15.994915
-        self.__read_mod__()
-    
-    def __read_mod__(self):
-        from .modification import get_modification
-        mod_dict = get_modification()
-        for modname, modinfo in mod_dict.items():
-            modinfo = modinfo.split(' ')
-            modmass = float(modinfo[2])
-            mod_neutral_loss = 0
-            if modinfo[4] != '0':
-                mod_neutral_loss = float(modinfo[5])
-            self.mod_mass_dict[modname] = (modmass, mod_neutral_loss)
-            
+        self.mod_mass_dict = keep_one_neutral_loss(get_modification())
+
     def fix_C57(self):
         self.aa_mass_dict['C'] += 57.021464
         
-    def fix_K8R10(self):
-        self.aa_mass_dict['K'] += self.mod_mass_dict['Label_13C(6)15N(2)[K]'][0]
-        self.aa_mass_dict['R'] += self.mod_mass_dict['Label_13C(6)15N(4)[R]'][0]
-        
-
 
 class AAMass_aa_ini(AAMass):
     '''

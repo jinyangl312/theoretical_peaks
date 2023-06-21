@@ -1,8 +1,9 @@
 import re
 import os
 
+
 def get_modification():
-    mod_dict = {} # {mod_name: elements}
+    mod_dict = {}  # {mod_name: elements}
     with open(os.path.dirname(__file__)+'/modification.ini') as f:
         line = f.readline()
         number = int(re.search('\d+', line).group())
@@ -16,6 +17,7 @@ def get_modification():
 class ModMass(object):
     def __init__(self):
         self.mod_mass_dict = get_modification()
+
 
 def keep_one_neutral_loss(mod_mass_dict):
     for modname, modinfo in mod_mass_dict.items():

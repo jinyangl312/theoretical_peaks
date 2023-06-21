@@ -5,15 +5,16 @@
 import re
 import os
 
-def get_linker_dict():    
+
+def get_linker_dict():
     """
     Interface for the usage of xlink.ini
     """
 
-    linker_dict = {} # {mod_name: elements}
+    linker_dict = {}  # {mod_name: elements}
     with open(os.path.dirname(__file__)+'/xlink.ini') as f:
         # Header
-        line = f.readline() # [xlink]
+        line = f.readline()  # [xlink]
         line = f.readline()
         number = int(re.search('\d+', line).group())
 
@@ -23,6 +24,7 @@ def get_linker_dict():
             linker_dict[line[0]] = line[1].split(' ')
     return linker_dict
 
+
 class LinkerMass(object):
     """
     Access linker mass info
@@ -30,13 +32,13 @@ class LinkerMass(object):
 
     def __init__(self):
         self.linker_dict = get_linker_dict()
-    
+
     def get_mono_mass(self, linker):
         return float(self.linker_dict[linker][4])
-    
+
     def get_linker_mass(self, linker):
         return float(self.linker_dict[linker][2])
-    
+
     def is_cleavable(self, linker):
         if linker not in self.linker_dict:
             return False
@@ -51,10 +53,11 @@ class LinkerMass(object):
         if self.is_cleavable(linker):
             return float(self.linker_dict[linker][9])
         return None
-    
+
     def get_long_short_arm_mass_deviation(self, linker):
         if self.is_cleavable(linker):
             return float(self.linker_dict[linker][9]) - float(self.linker_dict[linker][10])
         return None
-        
+
+
 xlmass = LinkerMass()
